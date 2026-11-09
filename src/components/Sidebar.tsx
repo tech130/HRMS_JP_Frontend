@@ -197,58 +197,15 @@ export default function Sidebar({ role, userName, isTL = false }: SidebarProps) 
 
     return (
         <aside className="db-sidebar">
-            {/* Logo */}
-            <div className="db-logo" style={{ padding: "8px 8px" }}>
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "#ffffff",
-                        borderRadius: 8,
-                        padding: "8px 14px",
-                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.25)",
-                        width: "100%",
-                    }}
-                >
-                    <img
-                        src="/logo.png"
-                        alt="Billion tags"
-                        style={{
-                            width: "100%",
-                            height: "auto",
-                            maxHeight: 28,
-                            objectFit: "contain",
-                            display: "block",
-                        }}
-                    />
+            {/* Brand Header */}
+            <div className="db-logo" style={{ padding: "18px 20px 16px" }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--sb-text-bright)", letterSpacing: "0.03em" }}>
+                    HRMS
+                </div>
+                <div style={{ fontSize: 11, color: "var(--sb-text-dim)", marginTop: 2 }}>
+                    Workspace
                 </div>
             </div>
-            {/* Logo */}
-            {/* <div
-                className="db-logo"
-                style={{
-                    background: "#ffffff",
-                    padding: "8px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderBottom: "1px solid rgba(0, 0, 0, 0.08)",
-                    borderTopLeftRadius: "inherit",
-                }}
-            >
-                <img
-                    src="/logo.png"
-                    alt="Billion tags"
-                    style={{
-                        width: "100%",
-                        height: "auto",
-                        maxHeight: 28,
-                        objectFit: "contain",
-                        display: "block",
-                    }}
-                />
-            </div> */}
 
             {/* Nav */}
             <nav className="db-nav">

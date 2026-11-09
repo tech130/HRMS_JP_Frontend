@@ -77,71 +77,13 @@ export default function Login() {
       <div className="login-left-panel">
         <div className="login-left-panel-overlay" />
         <div className="login-left-content">
-          <div className="login-logo-row" style={{ display: "flex", alignItems: "center", gap: 1, marginBottom: 36 }}>
-            {/* White badge container for the logo
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#ffffff",
-                borderRadius: 8,
-                padding: "0px 2px",
-                height: 38,
-                minWidth: 50,
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.25)",
-                flexShrink: 0,
-              }}
-            >
-              <img
-                src="/logo.jpg"
-                alt="Billion$"
-                style={{
-                  height: 20,
-                  width: "auto",
-                  maxWidth: 80,
-                  objectFit: "contain",
-                  display: "block",
-                }}
-              />
-            </div> */}
-             <div style={{ padding: "8px 8px" }}>
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "#ffffff",
-                        borderRadius: 8,
-                        padding: "8px 14px",
-                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.25)",
-                        width: "100%",
-                    }}
-                >
-                    <img
-                        src="/logo.png"
-                        alt="Billion tags"
-                        style={{
-                            width: "100%",
-                            height: "auto",
-                            maxHeight: 18,
-                            objectFit: "contain",
-                            display: "block",
-                        }}
-                    />
-                </div>
+          <div style={{ marginBottom: 36 }}>
+            <div className="login-logo-name" style={{ fontSize: 24, fontWeight: 800, color: "#fff", letterSpacing: "0.02em" }}>
+              HRMS
             </div>
-
-            {/* Text next to logo */}
-            <div>
-              <div className="login-logo-name" style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>
-                HRMS
-              </div>
-              <div className="login-logo-sub" style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.75)", marginTop: 2 }}>
-                Interactive team workspace
-              </div>
+            <div className="login-logo-sub" style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.75)", marginTop: 4 }}>
+              Interactive team workspace
             </div>
-            
           </div>
 
           <h1 className="login-headline">
