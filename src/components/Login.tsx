@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight, ArrowLeft } from "lucide-react";
 import "../components/styles/login.css";
+
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 export default function Login() {
   const { login, loading, error } = useAuth();
@@ -10,6 +12,15 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Forgot password states
+  const [isForgot, setIsForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -20,6 +31,43 @@ export default function Login() {
       });
     } catch {
       // error is already captured in useAuth().error and shown below
+    }
+  }
+
+  async function handleForgotSubmit(e: FormEvent) {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSuccess(null);
+
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError("Passwords do not match.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/forgot_password/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail, new_password: forgotNewPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setForgotError(data.detail || data.email?.[0] || data.new_password?.[0] || "Failed to update password");
+      } else {
+        setForgotSuccess("Password updated successfully! Redirecting to sign in...");
+        setEmail(forgotEmail);
+        setPassword(forgotNewPassword);
+        setTimeout(() => {
+          setIsForgot(false);
+          setForgotSuccess(null);
+        }, 1500);
+      }
+    } catch {
+      setForgotError("Network error. Please try again.");
+    } finally {
+      setForgotLoading(false);
     }
   }
 
@@ -151,53 +199,184 @@ export default function Login() {
       {/* ───────────────── RIGHT PANEL (form) ───────────────── */}
       <div className="login-right-panel">
         <div className="login-card">
-          <h2 className="login-card-title">Sign in to your dashboard</h2>
-          <p className="login-subtitle">
-            Enter your credentials to access your workspace.
-          </p>
+          {!isForgot ? (
+            <>
+              <h2 className="login-card-title">Sign in to your dashboard</h2>
+              <p className="login-subtitle">
+                Enter your credentials to access your workspace.
+              </p>
 
-          <form onSubmit={handleSubmit} className="login-form">
-            <div className="login-field">
-              <label className="login-label">Email</label>
-              <div className="login-input-wrap">
-                <Mail size={15} className="login-input-icon" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  className="login-input-with-icon"
-                  autoFocus
-                  required
-                />
-              </div>
-            </div>
+              <form onSubmit={handleSubmit} className="login-form">
+                <div className="login-field">
+                  <label className="login-label">Email</label>
+                  <div className="login-input-wrap">
+                    <Mail size={15} className="login-input-icon" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@company.com"
+                      className="login-input-with-icon"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div className="login-field">
-              <label className="login-label">Password</label>
-              <div className="login-input-wrap">
-                <Lock size={15} className="login-input-icon" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="login-input-with-icon"
-                  required
-                />
-              </div>
-            </div>
+                <div className="login-field">
+                  <label className="login-label">Password</label>
+                  <div className="login-input-wrap">
+                    <Lock size={15} className="login-input-icon" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="login-input-with-icon"
+                      required
+                    />
+                  </div>
+                </div>
 
-            {error && <div className="login-error-box">{error}</div>}
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -6 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(email);
+                      setForgotNewPassword("");
+                      setForgotConfirmPassword("");
+                      setForgotError(null);
+                      setForgotSuccess(null);
+                      setIsForgot(true);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--accent)",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      padding: 0,
+                      fontFamily: "'Poppins', sans-serif",
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
 
-            <button type="submit" disabled={loading} className="login-button">
-              {loading ? "Signing in..." : (
-                <>
-                  Sign In <ArrowRight size={14} />
-                </>
-              )}
-            </button>
-          </form>
+                {error && <div className="login-error-box">{error}</div>}
+
+                <button type="submit" disabled={loading} className="login-button">
+                  {loading ? "Signing in..." : (
+                    <>
+                      Sign In <ArrowRight size={14} />
+                    </>
+                  )}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <h2 className="login-card-title">Reset your password</h2>
+              <p className="login-subtitle">
+                Enter your registered email and your new password.
+              </p>
+
+              <form onSubmit={handleForgotSubmit} className="login-form">
+                <div className="login-field">
+                  <label className="login-label">Registered Email</label>
+                  <div className="login-input-wrap">
+                    <Mail size={15} className="login-input-icon" />
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="you@company.com"
+                      className="login-input-with-icon"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="login-field">
+                  <label className="login-label">New Password</label>
+                  <div className="login-input-wrap">
+                    <Lock size={15} className="login-input-icon" />
+                    <input
+                      type="password"
+                      value={forgotNewPassword}
+                      onChange={(e) => setForgotNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      className="login-input-with-icon"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="login-field">
+                  <label className="login-label">Confirm New Password</label>
+                  <div className="login-input-wrap">
+                    <Lock size={15} className="login-input-icon" />
+                    <input
+                      type="password"
+                      value={forgotConfirmPassword}
+                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                      placeholder="Re-enter new password"
+                      className="login-input-with-icon"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {forgotError && <div className="login-error-box">{forgotError}</div>}
+                {forgotSuccess && (
+                  <div
+                    style={{
+                      background: "rgba(16, 185, 129, 0.1)",
+                      color: "#10b981",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      borderRadius: "var(--radius-sm)",
+                      padding: "10px 12px",
+                      border: "1px solid rgba(16, 185, 129, 0.2)",
+                    }}
+                  >
+                    {forgotSuccess}
+                  </div>
+                )}
+
+                <button type="submit" disabled={forgotLoading} className="login-button">
+                  {forgotLoading ? "Updating..." : "Update Password"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgot(false);
+                    setForgotError(null);
+                    setForgotSuccess(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-secondary)",
+                    fontSize: "12.5px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "8px 0 0",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    fontFamily: "'Poppins', sans-serif",
+                  }}
+                >
+                  <ArrowLeft size={14} /> Back to Sign In
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>

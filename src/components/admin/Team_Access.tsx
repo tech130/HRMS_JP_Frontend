@@ -3,6 +3,7 @@ import { Table, Button, Input, Modal, Select, Switch, Form, message, Segmented }
 import {
     SearchOutlined, ReloadOutlined, EditOutlined,
     PlusOutlined, DeleteOutlined, UserOutlined,
+    EyeOutlined, EyeInvisibleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
@@ -24,6 +25,7 @@ interface EmployeeCredential {
     employee_id: string;
     name: string;
     email: string;
+    password?: string;
     department: string;
     role: string;
     belong_to_tl?: number | null;
@@ -36,8 +38,43 @@ interface AdminCredential {
     id: number;
     name: string;
     email: string;
+    password?: string;
     is_active: boolean;
     created_at: string;
+}
+
+function PasswordCell({ value }: { value?: string }) {
+    const [visible, setVisible] = useState(false);
+    if (!value) return <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>;
+    return (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{
+                fontFamily: "monospace",
+                fontSize: 12,
+                color: "var(--text-primary)",
+                letterSpacing: visible ? "normal" : 2,
+                fontWeight: 600,
+            }}>
+                {visible ? value : "••••••••"}
+            </span>
+            <button
+                type="button"
+                onClick={() => setVisible(!visible)}
+                style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 2,
+                    color: "var(--text-muted)",
+                    display: "flex",
+                    alignItems: "center",
+                }}
+                title={visible ? "Hide password" : "Show password"}
+            >
+                {visible ? <EyeInvisibleOutlined style={{ fontSize: 13 }} /> : <EyeOutlined style={{ fontSize: 13 }} />}
+            </button>
+        </div>
+    );
 }
 
 function StatCard({ label, value, changeLabel, changeType }: {
@@ -158,7 +195,7 @@ export default function Team_Access() {
             role: record.role,
             belong_to_tl: record.belong_to_tl || undefined,
             is_active: record.is_active,
-            password: "",
+            password: record.password || "",
         });
         setModalOpen(true);
     };
@@ -280,7 +317,7 @@ export default function Team_Access() {
             name: record.name,
             email: record.email,
             is_active: record.is_active,
-            password: "",
+            password: record.password || "",
         });
         setAdminModalOpen(true);
     };
@@ -464,11 +501,10 @@ export default function Team_Access() {
         },
         {
             title: "Password",
+            dataIndex: "password",
             key: "password",
-            width: 100,
-            render: () => (
-                <span style={{ fontSize: 13, color: "var(--text-muted)", letterSpacing: 2 }}>••••••••</span>
-            ),
+            width: 140,
+            render: (pwd: string) => <PasswordCell value={pwd} />,
         },
         {
             title: "Status",
@@ -530,11 +566,10 @@ export default function Team_Access() {
         },
         {
             title: "Password",
+            dataIndex: "password",
             key: "password",
-            width: 100,
-            render: () => (
-                <span style={{ fontSize: 13, color: "var(--text-muted)", letterSpacing: 2 }}>••••••••</span>
-            ),
+            width: 140,
+            render: (pwd: string) => <PasswordCell value={pwd} />,
         },
         {
             title: "Status",
@@ -760,9 +795,9 @@ export default function Team_Access() {
                         <Form.Item
                             label="Password"
                             name="password"
-                            rules={editing ? [] : [{ required: true, message: "Password is required" }]}
+                            rules={[{ required: true, message: "Password is required" }]}
                         >
-                            <Input.Password placeholder={editing ? "Leave blank to keep unchanged" : "Enter the password"} />
+                            <Input.Password placeholder="Enter the password" />
                         </Form.Item>
                     </div>
 
@@ -830,9 +865,9 @@ export default function Team_Access() {
                         <Form.Item
                             label="Password"
                             name="password"
-                            rules={editingAdmin ? [] : [{ required: true, message: "Password is required" }]}
+                            rules={[{ required: true, message: "Password is required" }]}
                         >
-                            <Input.Password placeholder={editingAdmin ? "Leave blank to keep unchanged" : "Enter the password"} />
+                            <Input.Password placeholder="Enter the password" />
                         </Form.Item>
                         <Form.Item label="Is Active" name="is_active" valuePropName="checked">
                             <div style={{ display: "flex", alignItems: "center", gap: 10, height: 36 }}>
