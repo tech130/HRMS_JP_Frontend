@@ -55,7 +55,7 @@ const ADMIN_NAV: NavGroup[] = [
         ],
     },
     {
-        section: "EMPLOYEE TASKS",
+        section: "TEAM TASKS",
         items: [
             { label: "All Tasks", icon: ClipboardList, to: "/admin/all_tasks" },
             { label: "Open Tasks", icon: FolderOpen, to: "/admin/open_tasks" },
@@ -69,7 +69,7 @@ const ADMIN_NAV: NavGroup[] = [
     },
     {
         section: "REQUESTS",
-        items: [{ label: "Employee Requests", icon: Inbox, to: "/admin/requests" }],
+        items: [{ label: "Team Requests", icon: Inbox, to: "/admin/requests" }],
     },
     // {
     //     section: "REQUESTS",
@@ -153,7 +153,7 @@ const TL_NAV: NavGroup[] = [
         ],
     },
     {
-        section: "EMPLOYEE TASKS",
+        section: "TEAM TASKS",
         items: [
             { label: "Team Tasks", icon: UsersRound, to: "/employee/tl_tasks" },
             { label: "Review Tasks", icon: CheckCircle2, to: "/employee/tl_review_tasks" },

@@ -3,9 +3,10 @@ import { Table, Button, Input, Modal, Select, Switch, Form, message, Segmented }
 import {
     SearchOutlined, ReloadOutlined, EditOutlined,
     PlusOutlined, DeleteOutlined, UserOutlined,
-    EyeOutlined, EyeInvisibleOutlined,
+    EyeOutlined, EyeInvisibleOutlined, UploadOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import BulkUploadTeamModal from "./BulkUploadTeamModal";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -104,10 +105,11 @@ export default function Team_Access() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<EmployeeCredential | null>(null);
     const [saving, setSaving] = useState(false);
+    const [bulkModalOpen, setBulkModalOpen] = useState(false);
     const [form] = Form.useForm();
 
     const watchedRole = Form.useWatch("role", form);
-    const isCurrentRoleTL = typeof watchedRole === "string" && ["TL", "TEAM LEAD"].includes(watchedRole.trim().toUpperCase());
+    const isRoleTL = typeof watchedRole === "string" && ["TL", "TEAM LEAD"].includes(watchedRole.trim().toUpperCase());
 
     const availableTLs = users.filter((u) => {
         const isTL = typeof u.role === "string" && ["TL", "TEAM LEAD"].includes(u.role.trim().toUpperCase());
@@ -116,10 +118,10 @@ export default function Team_Access() {
     });
 
     useEffect(() => {
-        if (isCurrentRoleTL) {
-            form.setFieldsValue({ belong_to_tl: undefined });
+        if (isRoleTL) {
+            form.setFieldsValue({ belong_to_tl: "ADMIN" });
         }
-    }, [isCurrentRoleTL, form]);
+    }, [isRoleTL, form]);
 
     const [addDeptOpen, setAddDeptOpen] = useState(false);
     const [newDeptName, setNewDeptName] = useState("");
@@ -177,11 +179,11 @@ export default function Team_Access() {
     const totalAdmins = admins.length;
     const activeAdmins = admins.filter((a) => a.is_active).length;
 
-    // ── Modal open/close — Employee ──────────────────────────────────────
+    // ── Modal open/close — Team Member ───────────────────────────────────
     const openAdd = () => {
         setEditing(null);
         form.resetFields();
-        form.setFieldsValue({ is_active: true, belong_to_tl: undefined });
+        form.setFieldsValue({ is_active: true, belong_to_tl: "ADMIN" });
         setModalOpen(true);
     };
 
@@ -193,14 +195,14 @@ export default function Team_Access() {
             email: record.email,
             department: record.department || undefined,
             role: record.role,
-            belong_to_tl: record.belong_to_tl || undefined,
+            belong_to_tl: record.belong_to_tl ? String(record.belong_to_tl) : "ADMIN",
             is_active: record.is_active,
             password: record.password || "",
         });
         setModalOpen(true);
     };
 
-    // ── Save — Employee ───────────────────────────────────────────────────
+    // ── Save — Team Member ────────────────────────────────────────────────
     const handleSave = async () => {
         let values;
         try {
@@ -211,7 +213,10 @@ export default function Team_Access() {
 
         setSaving(true);
         const isEdit = !!editing;
-        const isTL = typeof values.role === "string" && ["TL", "TEAM LEAD"].includes(values.role.trim().toUpperCase());
+        const roleStr = typeof values.role === "string" ? values.role.trim().toUpperCase() : "";
+        const isTL = ["TL", "TEAM LEAD"].includes(roleStr);
+        const tlVal = values.belong_to_tl;
+        const belong_to_tl = isTL || tlVal === "ADMIN" || tlVal === "0" || !tlVal ? null : Number(tlVal);
 
         const payload: Record<string, unknown> = {
             employee_id: values.employee_id,
@@ -219,7 +224,7 @@ export default function Team_Access() {
             email: values.email,
             department: values.department || "",
             role: values.role || "",
-            belong_to_tl: isTL ? null : (values.belong_to_tl || null),
+            belong_to_tl: belong_to_tl,
             is_active: values.is_active,
         };
         if (values.password) payload.password = values.password;
@@ -235,7 +240,7 @@ export default function Team_Access() {
                 body: JSON.stringify(payload),
             });
             if (res.ok) {
-                message.success(isEdit ? "Employee updated" : "Employee added");
+                message.success(isEdit ? "Team member updated" : "Team member added");
                 setModalOpen(false);
                 fetchUsers();
                 fetchDepartments();
@@ -250,10 +255,10 @@ export default function Team_Access() {
         }
     };
 
-    // ── Delete — Employee ─────────────────────────────────────────────────
+    // ── Delete — Team Member ──────────────────────────────────────────────
     const handleDelete = (record: EmployeeCredential) => {
         Modal.confirm({
-            title: "Delete this employee?",
+            title: "Delete this team member?",
             content: `Are you sure you want to delete "${record.name}"? This cannot be undone. If they have tasks or timer history, deleting will fail — deactivate instead.`,
             okText: "Yes, Delete",
             okButtonProps: { danger: true },
@@ -417,13 +422,13 @@ export default function Team_Access() {
         return [a.name, a.email].some((f) => f?.toLowerCase().includes(q));
     });
 
-    // ── Table columns — Employee ─────────────────────────────────────────
+    // ── Table columns — Team Member ──────────────────────────────────────
     const columns: ColumnsType<EmployeeCredential> = [
         {
-            title: "Employee ID",
+            title: "Member ID",
             dataIndex: "employee_id",
             key: "employee_id",
-            width: 110,
+            width: 120,
             render: (v: string) => (
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--amber)", background: "var(--amber-bg)", border: "1px solid var(--amber)", padding: "2px 10px", borderRadius: 6, whiteSpace: "nowrap", }}>
                     {v || "—"}
@@ -477,26 +482,28 @@ export default function Team_Access() {
             ),
         },
         {
-            title: "Belong to TL",
+            title: "Reporting To",
             dataIndex: "belong_to_tl_name",
             key: "belong_to_tl_name",
             render: (_: any, record: EmployeeCredential) => {
-                const isTL = typeof record.role === "string" && ["TL", "TEAM LEAD"].includes(record.role.trim().toUpperCase());
-                if (isTL) {
+                if (record.belong_to_tl_name) {
                     return (
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", fontStyle: "italic" }}>
-                            Under Admin
+                        <span style={{
+                            fontSize: 11, fontWeight: 600, color: "#0d9488", background: "rgba(13, 148, 136, 0.08)",
+                            border: "1px solid rgba(13, 148, 136, 0.25)", padding: "2px 9px", borderRadius: 6, whiteSpace: "nowrap",
+                        }}>
+                            TL: {record.belong_to_tl_name}
                         </span>
                     );
                 }
-                return record.belong_to_tl_name ? (
+                return (
                     <span style={{
-                        fontSize: 11, fontWeight: 600, color: "#0d9488", background: "rgba(13, 148, 136, 0.08)",
-                        border: "1px solid rgba(13, 148, 136, 0.25)", padding: "2px 9px", borderRadius: 6, whiteSpace: "nowrap",
+                        fontSize: 11, fontWeight: 600, color: "var(--purple)", background: "var(--purple-bg)",
+                        border: "1px solid rgba(139, 92, 246, 0.3)", padding: "2px 9px", borderRadius: 6, whiteSpace: "nowrap",
                     }}>
-                        {record.belong_to_tl_name}
+                        👑 Direct to Admin
                     </span>
-                ) : <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>;
+                );
             },
         },
         {
@@ -616,22 +623,35 @@ export default function Team_Access() {
     return (
         <div>
             {/* ── Page Header ── */}
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                {isEmployeeTab && (
+                    <Button
+                        onClick={() => setBulkModalOpen(true)}
+                        icon={<UploadOutlined />}
+                        style={{
+                            borderRadius: 9, fontSize: 12, fontWeight: 700, padding: "8px 16px",
+                            display: "flex", alignItems: "center", gap: 6,
+                            borderColor: "var(--accent)", color: "var(--accent)", background: "transparent",
+                        }}
+                    >
+                        Bulk Upload
+                    </Button>
+                )}
                 <Button onClick={isEmployeeTab ? openAdd : openAddAdmin} icon={<PlusOutlined />}
                     style={{
                         borderRadius: 9, border: "none", background: "var(--accent)", color: "#fff",
                         fontSize: 12, fontWeight: 700, padding: "8px 16px", display: "flex", alignItems: "center", gap: 6,
                     }}>
-                    {isEmployeeTab ? "Add Employee" : "Add Admin"}
+                    {isEmployeeTab ? "Add Team Member" : "Add Admin"}
                 </Button>
             </div>
 
             {/* ── Stat Cards ── */}
             {isEmployeeTab ? (
                 <div className="db-stat-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-                    <StatCard label="Total Employees" value={totalUsers} changeLabel={`${activeUsers} active`} changeType="up" />
-                    <StatCard label="Active Employees" value={activeUsers} changeLabel="Currently enabled" changeType="neutral" />
-                    <StatCard label="Departments In Use" value={totalDepartmentsInUse} changeLabel="Across all employees" changeType="neutral" />
+                    <StatCard label="Total Team Members" value={totalUsers} changeLabel={`${activeUsers} active`} changeType="up" />
+                    <StatCard label="Active Team Members" value={activeUsers} changeLabel="Currently enabled" changeType="neutral" />
+                    <StatCard label="Departments In Use" value={totalDepartmentsInUse} changeLabel="Across all team members" changeType="neutral" />
                 </div>
             ) : (
                 <div className="db-stat-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
@@ -646,13 +666,13 @@ export default function Team_Access() {
                     value={activeTab}
                     onChange={(v) => setActiveTab(v as "employee" | "admin")}
                     options={[
-                        { label: "Employees", value: "employee" },
+                        { label: "Team Members", value: "employee" },
                         { label: "Admins", value: "admin" },
                     ]}
                     className="team-access-tabs"
                 />
                 <Input
-                    placeholder={isEmployeeTab ? "Search by name, email, department, role…" : "Search by name, email…"}
+                    placeholder={isEmployeeTab ? "Search team members by name, email, department, role…" : "Search admins by name, email…"}
                     prefix={<SearchOutlined style={{ color: "var(--text-muted)" }} />}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -673,7 +693,7 @@ export default function Team_Access() {
                 </Button>
                 <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" }}>
                     {isEmployeeTab
-                        ? `${filtered.length} of ${users.length} employees`
+                        ? `${filtered.length} of ${users.length} team members`
                         : `${filteredAdmins.length} of ${admins.length} admins`}
                 </span>
             </div>
@@ -691,7 +711,7 @@ export default function Team_Access() {
                             pageSize: 10,
                             showSizeChanger: true,
                             pageSizeOptions: ["10", "20", "50"],
-                            showTotal: (total, range) => `${range[0]}–${range[1]} of ${total} employees`,
+                            showTotal: (total, range) => `${range[0]}–${range[1]} of ${total} team members`,
                             style: { padding: "12px 16px", color: "var(--text-primary)" },
                         }}
                         rowClassName={() => "client-table-row"}
@@ -725,10 +745,10 @@ export default function Team_Access() {
                 confirmLoading={saving}
                 title={
                     <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <UserOutlined /> {editing ? "Edit Employee" : "Add Employee"}
+                        <UserOutlined /> {editing ? "Edit Team Member" : "Add Team Member"}
                     </span>
                 }
-                okText={editing ? "Save Changes" : "Add"}
+                okText={editing ? "Save Changes" : "Add Team Member"}
                 width={700}
                 centered
                 destroyOnClose
@@ -736,11 +756,11 @@ export default function Team_Access() {
                 <Form form={form} layout="vertical">
                     <div className="db-form-row">
                         <Form.Item
-                            label="Employee ID"
+                            label="Member ID"
                             name="employee_id"
                             rules={[{ required: true, message: "Required" }]}
                         >
-                            <Input placeholder="e.g. EMP-0142" />
+                            <Input placeholder="e.g. TM-0142" />
                         </Form.Item>
                         <Form.Item label="Name" name="name" rules={[{ required: true, message: "Required" }]}>
                             <Input placeholder="e.g. Jane Doe" />
@@ -802,25 +822,25 @@ export default function Team_Access() {
                     </div>
 
                     <div className="db-form-row">
-                        {!isCurrentRoleTL ? (
-                            <Form.Item label="Belong to TL" name="belong_to_tl">
-                                <Select
-                                    placeholder="Select Team Lead"
-                                    allowClear
-                                    showSearch
-                                    optionFilterProp="label"
-                                    options={availableTLs.map((tl) => ({
-                                        value: tl.id,
-                                        label: tl.department ? `${tl.name} (${tl.department})` : tl.name,
-                                    }))}
-                                    notFoundContent="No available TL found"
-                                />
-                            </Form.Item>
-                        ) : (
-                            <Form.Item label="Belong to TL">
-                                <Input disabled value="Under Admin (Direct Report)" style={{ color: "var(--text-muted)" }} />
-                            </Form.Item>
-                        )}
+                        <Form.Item
+                            label="Reporting To"
+                            name="belong_to_tl"
+                            tooltip={isRoleTL ? "Team Leads always report directly to Admin" : "Select a Team Lead or 'Direct to Admin'"}
+                        >
+                            <Select
+                                placeholder="Select Reporting To (Admin or Team Lead)"
+                                showSearch
+                                disabled={isRoleTL}
+                                optionFilterProp="label"
+                                options={[
+                                    { value: "ADMIN", label: "👑 Admin (Direct Report)" },
+                                    ...availableTLs.map((tl) => ({
+                                        value: String(tl.id),
+                                        label: tl.department ? `👥 ${tl.name} (${tl.department}) - Team Lead` : `👥 ${tl.name} - Team Lead`,
+                                    })),
+                                ]}
+                            />
+                        </Form.Item>
 
                         <Form.Item label="Is Active" name="is_active" valuePropName="checked">
                             <div style={{ display: "flex", alignItems: "center", gap: 10, height: 36 }}>
@@ -930,6 +950,19 @@ export default function Team_Access() {
                     </Form.Item>
                 </Form>
             </Modal>
+
+            {/* ── Bulk Upload Modal — Team Members ── */}
+            <BulkUploadTeamModal
+                open={bulkModalOpen}
+                onClose={() => setBulkModalOpen(false)}
+                onSuccess={() => {
+                    fetchUsers();
+                    fetchDepartments();
+                }}
+                departments={departmentOptions}
+                existingMembers={users}
+                teamLeads={availableTLs}
+            />
         </div>
     );
 }

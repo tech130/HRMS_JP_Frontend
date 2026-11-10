@@ -8,7 +8,9 @@ import {
 
     FileTextOutlined, PauseCircleOutlined, PlayCircleOutlined,
 
-    StopOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined
+    StopOutlined, MoreOutlined, SortAscendingOutlined, SortDescendingOutlined,
+
+    EditOutlined
 
 } from "@ant-design/icons";
 
@@ -118,6 +120,8 @@ interface Task {
 
     priority: string | null;
 
+    start_date?: string | null;
+
     due_date: string | null;
 
     due_time?: string | null;  // <-- ADD THIS
@@ -225,6 +229,27 @@ const WEEKDAY_OPTIONS = [
 ];
 
 const DEFAULT_WEEKDAYS = [0, 1, 2, 3, 4, 5];
+
+function extractErrorMessage(err: any, fallback: string): string {
+    if (!err) return fallback;
+    if (typeof err === "string") return err;
+    if (err.detail && typeof err.detail === "string") return err.detail;
+    if (err.message && typeof err.message === "string") return err.message;
+    if (typeof err === "object") {
+        const entries = Object.entries(err);
+        if (entries.length > 0) {
+            const msgs = entries.map(([key, val]) => {
+                const valStr = Array.isArray(val) ? val.join(", ") : String(val);
+                return key === "detail" || key === "non_field_errors" ? valStr : `${key}: ${valStr}`;
+            });
+            const joined = msgs.join("; ");
+            if (joined && joined !== "{}") {
+                return joined;
+            }
+        }
+    }
+    return fallback;
+}
 
 
 
@@ -413,6 +438,8 @@ export default function All_Task_Admin() {
     const [createOpen, setCreateOpen] = useState(false);
 
     const [creating, setCreating] = useState(false);
+
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
 
     const [createForm] = Form.useForm();
 
@@ -654,6 +681,8 @@ export default function All_Task_Admin() {
 
     const openCreate = () => {
 
+        setEditingTask(null);
+
         createForm.resetFields();
 
         createForm.setFieldsValue({
@@ -674,6 +703,60 @@ export default function All_Task_Admin() {
 
 
 
+    const openEditTask = (record: Task) => {
+
+        setEditingTask(record);
+
+        const dept = record.department_name || (typeof record.department === "string" ? record.department : undefined);
+
+        setCreateDeptId(dept || undefined);
+
+
+
+        const totalMins = Math.round(Number(record.allotted_time || 0) * 60);
+
+        const hours = Math.floor(totalMins / 60);
+
+        const minutes = totalMins % 60;
+
+
+
+        createForm.setFieldsValue({
+
+            project_name: record.project_name,
+
+            task_name: record.task_name,
+
+            task_details: record.task_details,
+
+            department: dept,
+
+            assigned_to: record.assigned_to,
+
+            priority: record.priority,
+
+            allotted_hours: hours,
+
+            allotted_minutes: minutes,
+
+            start_date: record.start_date ? dayjs(record.start_date) : (record.assigned_date ? dayjs(record.assigned_date) : undefined),
+
+            due_date: record.due_date ? dayjs(record.due_date) : undefined,
+
+            due_time: record.due_time ? dayjs(record.due_time, "HH:mm:ss") : undefined,
+
+        });
+
+
+
+        setIsDaily(false);
+
+        setCreateOpen(true);
+
+    };
+
+
+
     const handleCreateDeptChange = (deptName: string) => {
 
         setCreateDeptId(deptName);
@@ -684,7 +767,10 @@ export default function All_Task_Admin() {
 
 
 
-    const employeesForCreateDept = employees.filter((e) => e.department === createDeptId);
+    const employeesForCreateDept = useMemo(() => {
+        if (!createDeptId) return [];
+        return employees.filter((e) => e.department?.toLowerCase() === createDeptId.toLowerCase());
+    }, [employees, createDeptId]);
 
 
 
@@ -784,15 +870,25 @@ export default function All_Task_Admin() {
 
         try {
 
-            const url = isDaily
+            const isEdit = Boolean(editingTask);
 
-                ? `${BASE_URL}/api/tasks/recurring/create/`
+            const url = isEdit
 
-                : `${BASE_URL}/api/tasks/create_and_assign/`;
+                ? `${BASE_URL}/api/tasks/${editingTask!.id}/edit/`
+
+                : (isDaily
+
+                    ? `${BASE_URL}/api/tasks/recurring/create/`
+
+                    : `${BASE_URL}/api/tasks/create_and_assign/`);
 
 
 
-            const body = isDaily
+            const method = isEdit ? "PATCH" : "POST";
+
+
+
+            const body = isEdit
 
                 ? {
 
@@ -802,31 +898,7 @@ export default function All_Task_Admin() {
 
                     task_details: values.task_details,
 
-                    assigned_to: values.assigned_to,
-
-                    priority: values.priority,
-
-                    allotted_time: allottedTime,
-
-                    start_date: values.recurring_start_date.format("YYYY-MM-DD"),
-
-                    end_date: values.recurring_end_date
-
-                        ? values.recurring_end_date.format("YYYY-MM-DD")
-
-                        : null,
-
-                    weekdays: selectedWeekdays,
-
-                }
-
-                : {
-
-                    project_name: values.project_name,
-
-                    task_name: values.task_name,
-
-                    task_details: values.task_details,
+                    department: values.department,
 
                     assigned_to: values.assigned_to,
 
@@ -840,13 +912,65 @@ export default function All_Task_Admin() {
 
                     allotted_time: allottedTime,
 
-                };
+                }
+
+                : (isDaily
+
+                    ? {
+
+                        project_name: values.project_name,
+
+                        task_name: values.task_name,
+
+                        task_details: values.task_details,
+
+                        assigned_to: values.assigned_to,
+
+                        priority: values.priority,
+
+                        allotted_time: allottedTime,
+
+                        start_date: values.recurring_start_date.format("YYYY-MM-DD"),
+
+                        end_date: values.recurring_end_date
+
+                            ? values.recurring_end_date.format("YYYY-MM-DD")
+
+                            : null,
+
+                        weekdays: selectedWeekdays,
+
+                    }
+
+                    : {
+
+                        project_name: values.project_name,
+
+                        task_name: values.task_name,
+
+                        task_details: values.task_details,
+
+                        department: values.department,
+
+                        assigned_to: values.assigned_to,
+
+                        priority: values.priority,
+
+                        start_date: values.start_date ? values.start_date.format("YYYY-MM-DD") : null,
+
+                        due_date: values.due_date ? values.due_date.format("YYYY-MM-DD") : null,
+
+                        due_time: values.due_time ? values.due_time.format("HH:mm:ss") : null,
+
+                        allotted_time: allottedTime,
+
+                    });
 
 
 
             const res = await fetch(url, {
 
-                method: "POST",
+                method,
 
                 headers: { "Content-Type": "application/json", ...authHeaders() },
 
@@ -858,18 +982,17 @@ export default function All_Task_Admin() {
 
             if (res.ok) {
 
-                message.success(isDaily ? "Daily task scheduled" : "Task created and assigned");
+                message.success(isEdit ? "Task updated successfully" : (isDaily ? "Daily task scheduled" : "Task created and assigned"));
 
                 setCreateOpen(false);
+
+                setEditingTask(null);
 
                 fetchTasks();
 
             } else {
-
-                const err = await res.json().catch(() => ({}));
-
-                message.error(JSON.stringify(err) || "Failed to create task");
-
+                const err = await res.json().catch(() => null);
+                message.error(extractErrorMessage(err, isEdit ? "Failed to update task" : "Failed to create task"));
             }
 
         } catch {
@@ -979,11 +1102,8 @@ export default function All_Task_Admin() {
                 fetchTasks();
 
             } else {
-
-                const err = await res.json().catch(() => ({}));
-
-                message.error(JSON.stringify(err) || "Failed to assign task");
-
+                const err = await res.json().catch(() => null);
+                message.error(extractErrorMessage(err, "Failed to assign task"));
             }
 
         } catch {
@@ -1472,6 +1592,18 @@ export default function All_Task_Admin() {
 
                     {
 
+                        key: "edit",
+
+                        icon: <EditOutlined />,
+
+                        label: "Edit Task",
+
+                        onClick: () => openEditTask(record),
+
+                    },
+
+                    {
+
                         key: "assign",
 
                         icon: <UserSwitchOutlined />,
@@ -1784,7 +1916,13 @@ export default function All_Task_Admin() {
 
                 open={createOpen}
 
-                onCancel={() => setCreateOpen(false)}
+                onCancel={() => {
+
+                    setCreateOpen(false);
+
+                    setEditingTask(null);
+
+                }}
 
                 onOk={handleCreate}
 
@@ -1794,13 +1932,15 @@ export default function All_Task_Admin() {
 
                     <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
 
-                        <FileTextOutlined /> Create Task
+                        {editingTask ? <EditOutlined /> : <FileTextOutlined />}
+
+                        {editingTask ? `Edit Task (${editingTask.sub_task_id || editingTask.task_id})` : "Create Task"}
 
                     </span>
 
                 }
 
-                okText="Create & Assign"
+                okText={editingTask ? "Save Changes" : "Create & Assign"}
 
                 width={640}
 
@@ -1904,6 +2044,8 @@ export default function All_Task_Admin() {
 
                     </Form.Item>
 
+                    {!editingTask && (
+
                     <div className="db-form-row">
 
                         <Form.Item name="is_daily" valuePropName="checked">
@@ -1936,7 +2078,9 @@ export default function All_Task_Admin() {
 
                     </div>
 
-                    {isDaily && (
+                    )}
+
+                    {!editingTask && isDaily && (
 
                         <div className="db-form-row">
 

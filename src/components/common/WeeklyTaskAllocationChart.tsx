@@ -30,7 +30,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip as RechartsTooltip,
-    ReferenceLine,
     Cell,
 } from "recharts";
 import dayjs, { Dayjs } from "dayjs";
@@ -264,10 +263,7 @@ export default function WeeklyTaskAllocationChart({
 
     const getBarColor = (item: any) => {
         if (item.is_sunday) return "#a1a1aa"; // Gray for Sunday holiday
-        if (item.assigned > dailyTargetHours) return "#ef4444"; // Red for overloaded (> target)
-        if (item.assigned === dailyTargetHours) return "#10b981"; // Emerald green for exact target
-        if (item.assigned >= dailyTargetHours * 0.75) return "#3b82f6"; // Primary blue
-        if (item.assigned > 0) return "#60a5fa"; // Soft blue
+        if (item.assigned > 0) return "#3b82f6"; // Primary blue for assigned work
         return "#cbd5e1"; // Light slate for 0h
     };
 
@@ -299,7 +295,7 @@ export default function WeeklyTaskAllocationChart({
                         </Tag>
                     ) : (
                         <Tag color="blue" style={{ margin: 0, fontSize: 10, fontWeight: 600 }}>
-                            Workday ({dailyTargetHours}h)
+                            Workday
                         </Tag>
                     )}
                 </div>
@@ -309,7 +305,7 @@ export default function WeeklyTaskAllocationChart({
                         <>
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                                 <span style={{ color: "#64748b" }}>Average per Employee:</span>
-                                <span style={{ fontWeight: 700, color: d.assigned > 8 ? "#dc2626" : "#2563eb" }}>
+                                <span style={{ fontWeight: 700, color: "#2563eb" }}>
                                     {d.average_assigned_hours ?? Math.round((d.assigned_hours / employeeCount) * 100) / 100} hrs
                                 </span>
                             </div>
@@ -323,38 +319,15 @@ export default function WeeklyTaskAllocationChart({
                     ) : (
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                             <span style={{ color: "#64748b" }}>Task Hours Assigned:</span>
-                            <span style={{ fontWeight: 700, color: d.assigned > 8 ? "#dc2626" : "#2563eb" }}>
+                            <span style={{ fontWeight: 700, color: "#2563eb" }}>
                                 {d.assigned} hrs
-                            </span>
-                        </div>
-                    )}
-
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ color: "#64748b" }}>Daily Target Capacity:</span>
-                        <span style={{ fontWeight: 600, color: "#334155" }}>{d.target} hrs</span>
-                    </div>
-
-                    {!d.is_sunday && (
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                            <span style={{ color: "#64748b" }}>
-                                {d.assigned > d.target ? "Over-allocated by:" : "Remaining available:"}
-                            </span>
-                            <span
-                                style={{
-                                    fontWeight: 700,
-                                    color: d.assigned > d.target ? "#dc2626" : "#16a34a",
-                                }}
-                            >
-                                {d.assigned > d.target
-                                    ? `+${Math.round((d.assigned - d.target) * 100) / 100} hrs`
-                                    : `${Math.round((d.target - d.assigned) * 100) / 100} hrs`}
                             </span>
                         </div>
                     )}
 
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
                         <span style={{ color: "#64748b" }}>Tasks Scheduled:</span>
-                        <span style={{ fontWeight: 600 }}>{d.task_count} tasks</span>
+                        <span style={{ fontWeight: 600 }}>{d.task_count ?? 0} tasks</span>
                     </div>
                 </div>
 
@@ -680,22 +653,9 @@ export default function WeeklyTaskAllocationChart({
                                 fontSize={11}
                                 tickLine={false}
                                 unit="h"
-                                domain={[0, (dataMax: number) => Math.max(Math.ceil(dailyTargetHours * 1.25), Math.ceil(dataMax + 2))]}
+                                domain={[0, (dataMax: number) => Math.max(10, Math.ceil(dataMax + 2))]}
                             />
                             <RechartsTooltip content={<CustomTooltip />} />
-                            <ReferenceLine
-                                y={dailyTargetHours}
-                                stroke="#ef4444"
-                                strokeDasharray="4 4"
-                                strokeWidth={1.5}
-                                label={{
-                                    value: `${dailyTargetHours}h ${isAllEmployees && metricMode === "team_total" ? `Team Target (${employeeCount}×8h)` : "Daily Workday Target"}`,
-                                    position: "top",
-                                    fill: "#ef4444",
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                }}
-                            />
                             <Bar
                                 dataKey="assigned"
                                 radius={[6, 6, 0, 0]}
@@ -717,7 +677,7 @@ export default function WeeklyTaskAllocationChart({
                         justifyContent: "center",
                         alignItems: "center",
                         flexWrap: "wrap",
-                        gap: 16,
+                        gap: 20,
                         marginTop: 12,
                         paddingTop: 10,
                         borderTop: "1px solid var(--border, #f1f5f9)",
@@ -725,25 +685,13 @@ export default function WeeklyTaskAllocationChart({
                         color: "#64748b",
                     }}
                 >
-                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ width: 10, height: 10, borderRadius: 2, background: "#3b82f6" }} />
-                        Task Assigned (&le; {dailyTargetHours}h)
+                        Task Hours Assigned
                     </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 2, background: "#10b981" }} />
-                        Exact Target Met ({dailyTargetHours}h)
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 2, background: "#ef4444" }} />
-                        Over-allocated (&gt; {dailyTargetHours}h)
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ width: 10, height: 10, borderRadius: 2, background: "#a1a1aa" }} />
                         Sunday (Weekly Off / Holiday)
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#dc2626", fontWeight: 600 }}>
-                        <span style={{ width: 12, height: 2, background: "#ef4444", display: "inline-block" }} />
-                        {dailyTargetHours}h Target Line
                     </span>
                 </div>
             </Spin>
@@ -762,7 +710,7 @@ export default function WeeklyTaskAllocationChart({
                                 <Tag color="blue">
                                     {isAllEmployees
                                         ? `Total: ${activeDayModal.assigned_hours}h | Avg: ${activeDayModal.average_assigned_hours ?? Math.round((activeDayModal.assigned_hours / employeeCount) * 100) / 100}h`
-                                        : `${activeDayModal.assigned_hours}h / 8h Assigned`}
+                                        : `${activeDayModal.assigned_hours}h Assigned`}
                                 </Tag>
                             )}
                         </div>
@@ -782,7 +730,7 @@ export default function WeeklyTaskAllocationChart({
                         <div
                             style={{
                                 display: "grid",
-                                gridTemplateColumns: isAllEmployees ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr",
+                                gridTemplateColumns: isAllEmployees ? "1fr 1fr 1fr" : "1fr 1fr",
                                 gap: 10,
                                 background: "#f8fafc",
                                 padding: "10px 14px",
@@ -792,9 +740,9 @@ export default function WeeklyTaskAllocationChart({
                             }}
                         >
                             <div>
-                                <div style={{ fontSize: 11, color: "#64748b" }}>Target Hours</div>
-                                <div style={{ fontSize: 16, fontWeight: 700 }}>
-                                    {isAllEmployees && metricMode === "team_total" ? `${dailyTargetHours} hrs` : "8.0 hrs"}
+                                <div style={{ fontSize: 11, color: "#64748b" }}>Total Tasks</div>
+                                <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+                                    {activeDayModal.tasks?.length ?? 0}
                                 </div>
                             </div>
                             {isAllEmployees && (
@@ -806,25 +754,9 @@ export default function WeeklyTaskAllocationChart({
                                 </div>
                             )}
                             <div>
-                                <div style={{ fontSize: 11, color: "#64748b" }}>Total Assigned</div>
-                                <div style={{ fontSize: 16, fontWeight: 700, color: activeDayModal.assigned_hours > dailyTargetHours ? "#dc2626" : "#2563eb" }}>
+                                <div style={{ fontSize: 11, color: "#64748b" }}>Total Hours Assigned</div>
+                                <div style={{ fontSize: 16, fontWeight: 700, color: "#2563eb" }}>
                                     {activeDayModal.assigned_hours} hrs
-                                </div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: 11, color: "#64748b" }}>
-                                    {activeDayModal.assigned_hours > dailyTargetHours ? "Over-allocated" : "Available Capacity"}
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: 16,
-                                        fontWeight: 700,
-                                        color: activeDayModal.assigned_hours > dailyTargetHours ? "#dc2626" : "#16a34a",
-                                    }}
-                                >
-                                    {activeDayModal.assigned_hours > dailyTargetHours
-                                        ? `+${Math.round((activeDayModal.assigned_hours - dailyTargetHours) * 100) / 100} hrs`
-                                        : `${Math.round((dailyTargetHours - activeDayModal.assigned_hours) * 100) / 100} hrs`}
                                 </div>
                             </div>
                         </div>
